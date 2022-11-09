@@ -44,10 +44,14 @@ scale_fill_discrete = scale_fill_viridis_d
 # Problem 2 (Homicide Dataset)
 ```{r, warning = FALSE, message=FALSE}
 # Import dataset
-homicide_raw <- read_csv(url("https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv"))
+homicide_raw <- read_csv("https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv")
 ```
 
 * The raw data collected by Washington Post reports a total of `r homicide_raw %>% nrow()` criminal homicides over the past decade in 50 of the largest American cities, including `r homicide_raw %>% ncol()` variables, namely `r homicide_raw %>% names`.
+* The reported date, longitude and latitude are designated as numeric variables, and the remaining 9 variables including age, are defined as characters. 
+* We can observe some entries for the victim's race, age, and sex are reported as unknown.
+* There exist `r sum(is.na(homicide_raw$lat))` missing values in `lat`, `r sum(is.na(homicide_raw$lon))` in `lon`, accounting for `r sum(is.na(homicide_raw$lat)/nrow(homicide_raw)) %>% scales::percent(0.01)`, `r sum(is.na(homicide_raw$lon)/nrow(homicide_raw)) %>% scales::percent(0.01)`, respectively. 
+* In particular, there was one record from the city of `Tulsa`, which is located in the state of `OK`, was incorrectly logged as being in the state of `AL`, which will be removed as a typo.
 
 
 ```{r, warning = FALSE, message=FALSE}
@@ -64,8 +68,10 @@ homicide_df = homicide_raw %>%
     )) %>% 
   relocate(city_state) %>%
   filter(city_state != "Tulsa, AL")
+```
 
 
+```{r, warning = FALSE, message=FALSE}
 # Summarize within cities to calculate the total number of homicides and unsolved homicides
 summary_hom_df = homicide_df %>% 
   group_by(city_state) %>% 
@@ -74,17 +80,23 @@ summary_hom_df = homicide_df %>%
     hom_unsolved = sum(resolved == "unsolved")
   )
 
-summary_hom_df 
+summary_hom_df %>% 
+  knitr::kable(align = "lrr", 
+               col.names = c("City", "Total number of homicides", "Number of unsovled homicides"))
+```
 
 
+```{r, warning = FALSE, message=FALSE}
 # Estimate the proportion of unsolved homicides in Baltimore, MD
 prop_baltimore = prop.test(
   summary_hom_df %>% filter(city_state == "Baltimore, MD") %>% pull(hom_unsolved), 
   summary_hom_df %>% filter(city_state == "Baltimore, MD") %>% pull(hom_total)) 
 
 prop_baltimore %>% broom::tidy()
+```
 
 
+```{r, warning = FALSE, message=FALSE}
 # Iterate to estimate the proportion of unsolved homicides in all cities
 prop_cities = 
   summary_hom_df %>% 
@@ -95,7 +107,11 @@ prop_cities =
   select(-prop_tests) %>% 
   unnest(tidy_tests) %>% 
   select(city_state, estimate, conf.low, conf.high)
+```
 
+
+
+```{r, warning = FALSE, message=FALSE}
 # Create a plot showing the estimates and CIs for each city
 prop_cities %>% 
   mutate(city_state = fct_reorder(city_state, estimate)) %>% 
@@ -113,7 +129,41 @@ prop_cities %>%
 
 &nbsp;
 
+
+
 # Problem 3 (Simulation to Explore Power)
+```{r, warning = FALSE, message=FALSE}
+# Construct function for one-sample t-test
+set.seed(123)
+ttest = function(mu){
+  sim_data = tibble(x = rnorm(n = 30, mean = mu, sd = 5))
+  sim_data %>% 
+    summarize(t.test(x, mu = 0, conf.level = 0.95) %>% broom::tidy())
+} 
+
+
+# Generate 5000 datasets from the model and repeat the t-test
+sim_result = function(mu){
+  rerun(5000, ttest(mu)) %>%
+    bind_rows() %>%
+    select(p.value, estimate)
+}
+
+
+# mu = 0
+sim_result(0)
+
+
+# mu = 1,2,3,4,5,6
+
+
+```
+
+
+```{r, warning = FALSE, message=FALSE}
+
+```
+
 ```{r, warning = FALSE, message=FALSE}
 
 ```
