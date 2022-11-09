@@ -1,0 +1,120 @@
+---
+title: "p8105_hw5_yj2687"
+author: "Yijia Jiang"
+date: "2022-11-06"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggridges)
+library(patchwork)
+
+library(p8105.datasets)
+
+knitr::opts_chunk$set(
+	echo = TRUE,
+	warning = FALSE,
+	fig.width = 8, 
+  fig.height = 6,
+  out.width = "90%"
+)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+```
+
+
+
+# Problem 1 (Longitudinal Study)
+```{r, warning = FALSE, message=FALSE}
+
+```
+
+
+&nbsp;
+
+# Problem 2 (Homicide Dataset)
+```{r, warning = FALSE, message=FALSE}
+# Import dataset
+homicide_raw <- read_csv(url("https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv"))
+```
+
+* The raw data collected by Washington Post reports a total of `r homicide_raw %>% nrow()` criminal homicides over the past decade in 50 of the largest American cities, including `r homicide_raw %>% ncol()` variables, namely `r homicide_raw %>% names`.
+
+
+```{r, warning = FALSE, message=FALSE}
+# Clean dataset and create variables city_state, resolved
+homicide_df = homicide_raw %>% 
+  janitor::clean_names() %>%
+  mutate(reported_date = as.Date(as.character(reported_date), format = "%Y%m%d")) %>% 
+  mutate(
+    city_state = str_c(city, state, sep = ", "),
+    resolved = case_when(
+      disposition == "Closed without arrest" ~ "unsolved",
+      disposition == "Open/No arrest" ~ "unsolved",
+      disposition == "Closed by arrest" ~ "solved",
+    )) %>% 
+  relocate(city_state) %>%
+  filter(city_state != "Tulsa, AL")
+
+
+# Summarize within cities to calculate the total number of homicides and unsolved homicides
+summary_hom_df = homicide_df %>% 
+  group_by(city_state) %>% 
+  summarize(
+    hom_total = n(),
+    hom_unsolved = sum(resolved == "unsolved")
+  )
+
+summary_hom_df 
+
+
+# Estimate the proportion of unsolved homicides in Baltimore, MD
+prop_baltimore = prop.test(
+  summary_hom_df %>% filter(city_state == "Baltimore, MD") %>% pull(hom_unsolved), 
+  summary_hom_df %>% filter(city_state == "Baltimore, MD") %>% pull(hom_total)) 
+
+prop_baltimore %>% broom::tidy()
+
+
+# Iterate to estimate the proportion of unsolved homicides in all cities
+prop_cities = 
+  summary_hom_df %>% 
+  mutate(
+    prop_tests = purrr::map2(.x = hom_unsolved, .y = hom_total, ~prop.test(x = .x, n = .y)),
+    tidy_tests = purrr::map(.x = prop_tests, ~broom::tidy(.x))
+  ) %>% 
+  select(-prop_tests) %>% 
+  unnest(tidy_tests) %>% 
+  select(city_state, estimate, conf.low, conf.high)
+
+# Create a plot showing the estimates and CIs for each city
+prop_cities %>% 
+  mutate(city_state = fct_reorder(city_state, estimate)) %>% 
+  ggplot(aes(x = city_state, y = estimate)) +
+  geom_point() + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  labs(
+    title = "Estimates and 95% CIs of Proportion of Unsolved Homicides in All Cities",
+    x = "City",
+    y = "Estimate")
+```
+
+
+
+&nbsp;
+
+# Problem 3 (Simulation to Explore Power)
+```{r, warning = FALSE, message=FALSE}
+
+```
+
