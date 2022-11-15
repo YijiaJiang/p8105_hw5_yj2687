@@ -145,7 +145,7 @@ sim_result =
 # Make a plot showing the proportion of times the null was rejected on the y axis and the true value of mu on the x axis
 sim_result  %>% 
   group_by(mu) %>%
-  filter(p_value <= 0.05) %>% 
+  filter(p_value < 0.05) %>% 
   summarize(rej_num = n(), rej_prop = rej_num/5000) %>% 
   ggplot(aes(x = mu, y = rej_prop)) + 
   geom_point(alpha = 0.8) +
