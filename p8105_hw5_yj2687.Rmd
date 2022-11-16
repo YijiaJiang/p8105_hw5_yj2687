@@ -1,12 +1,13 @@
 ---
 title: "p8105_hw5_yj2687"
 author: "Yijia Jiang"
-date: "2022-11-06"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
 output: github_document
 ---
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(viridis)
 
 knitr::opts_chunk$set(
 	echo = TRUE,
@@ -17,11 +18,68 @@ knitr::opts_chunk$set(
 )
 
 theme_set(theme_minimal() + theme(legend.position = "right"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
 ```
 
 
 
-# Problem 2 (Homicide Dataset)
+## Problem 1 (Longitudinal study)
+
+```{r, warning=FALSE, message=FALSE}
+# Import the dataset
+full_df = 
+  tibble(
+    files = list.files("./p8105_hw5_data/"),
+    path = str_c("./p8105_hw5_data/", files)
+  ) %>% 
+  mutate(data = map(path, read_csv)) %>% 
+  unnest()
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+# Tidy the data
+tidy_df = 
+  full_df %>% 
+  mutate(
+    files = str_replace(files, ".csv", ""),
+    group = str_sub(files, 1, 3)) %>% 
+  pivot_longer(
+    week_1:week_8,
+    names_to = "week",
+    values_to = "outcome",
+    names_prefix = "week_") %>% 
+  mutate(week = as.numeric(week)) %>% 
+  select(group, subj = files, week, outcome)
+```
+
+
+
+```{r, warning=FALSE, message=FALSE}
+# Make a spaghetti plot showing observations on each subject over time
+tidy_df %>% 
+  ggplot(aes(x = week, y = outcome, color = group)) + 
+  geom_point() + 
+  geom_path() + 
+  facet_grid(~group) + 
+  labs(x = "Week", y = "Outcome", 
+       title = "Observations on Each Subject over 8 Weeks in Two Groups")
+```
+
+* The plot indicates high within-subject correlation -- subjects who start above average end up above average, and those that start below average end up below average. Subjects in the control group generally don't change over time, but those in the experiment group increase their outcome in a roughly linear way. 
+
+&nbsp;
+
+
+
+## Problem 2 (Homicide Dataset)
 ```{r, warning = FALSE, message=FALSE}
 # Import dataset
 homicide_raw <- read_csv("https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv")
@@ -111,7 +169,7 @@ prop_cities %>%
 
 
 
-# Problem 3 (Simulation to Explore Power)
+## Problem 3 (Simulation to Explore Power)
 ```{r, warning = FALSE, message=FALSE}
 # Construct function for one-sample t-test
 ttest = function(n = 30, mu, sigma = 5){
